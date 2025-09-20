@@ -1,14 +1,14 @@
 {
   "$schema": "https://json.schemastore.org/nest-cli",
   "collection": "@nestjs/schematics",
-  "sourceRoot": "apps/blogs-microservices/src",
+  "sourceRoot": "apps/blogs/src",
   "compilerOptions": {
     "deleteOutDir": true,
     "webpack": true,
     "tsConfigPath": "apps/blogs/tsconfig.app.json"
   },
   "monorepo": true,
-  "root": "apps/blogs-microservices",
+  "root": "apps/blogs",
   "projects": {
     "auth": {
       "type": "application",
