@@ -1,0 +1,109 @@
+version: "3.9"
+
+services:
+  mongo1:
+    image: mongo:7
+    container_name: mongo1
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo1_data:/data/db
+      - mongo1_config:/data/configdb
+    command: ["mongod", "--replSet", "rs0", "--bind_ip_all"]
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  mongo2:
+    image: mongo:7
+    container_name: mongo2
+    volumes:
+      - mongo2_data:/data/db
+      - mongo2_config:/data/configdb
+    command: ["mongod", "--replSet", "rs0", "--bind_ip_all"]
+    depends_on:
+      - mongo1
+
+  mongo3:
+    image: mongo:7
+    container_name: mongo3
+    volumes:
+      - mongo3_data:/data/db
+      - mongo3_config:/data/configdb
+    command: ["mongod", "--replSet", "rs0", "--bind_ip_all"]
+    depends_on:
+      - mongo1
+
+  mongo-init-replica:
+    image: mongo:7
+    container_name: mongo-init-replica
+    depends_on:
+      mongo1:
+        condition: service_healthy
+    restart: "no"
+    entrypoint: ["bash", "-c"]
+    command: >-
+      "sleep 5 && mongosh mongodb://mongo1:27017 --eval '
+      rs.initiate({
+        _id: "rs0",
+        members: [
+          {_id: 0, host: "mongo1:27017"},
+          {_id: 1, host: "mongo2:27017"},
+          {_id: 2, host: "mongo3:27017"}
+        ]
+      });
+      rs.status();'"
+
+  auth:
+    build:
+      context: .
+      dockerfile: apps/auth/Dockerfile
+    container_name: auth
+    environment:
+      - NODE_ENV=production
+      - port=3001
+      - MONGODB_URI=mongodb://mongo1:27017,mongo2:27017,mongo3:27017/blogs?replicaSet=rs0
+    ports:
+      - "3001:3001"
+    depends_on:
+      - mongo-init-replica
+
+  blogs:
+    build:
+      context: .
+      dockerfile: apps/blogs/Dockerfile
+    container_name: blogs
+    environment:
+      - NODE_ENV=production
+      - port=3002
+      - MONGODB_URI=mongodb://mongo1:27017,mongo2:27017,mongo3:27017/blogs?replicaSet=rs0
+    ports:
+      - "3002:3002"
+    depends_on:
+      - mongo-init-replica
+
+  interactions:
+    build:
+      context: .
+      dockerfile: apps/interactions/Dockerfile
+    container_name: interactions
+    environment:
+      - NODE_ENV=production
+      - port=3003
+      - MONGODB_URI=mongodb://mongo1:27017,mongo2:27017,mongo3:27017/blogs?replicaSet=rs0
+    ports:
+      - "3003:3003"
+    depends_on:
+      - mongo-init-replica
+
+volumes:
+  mongo1_data:
+  mongo1_config:
+  mongo2_data:
+  mongo2_config:
+  mongo3_data:
+  mongo3_config:
+
+

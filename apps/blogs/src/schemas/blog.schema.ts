@@ -13,8 +13,8 @@ export class Blog extends AbstractDocument {
   @Prop()
   userId: string;
 
-  @Prop()
-  imageUrl: string;
+  @Prop({ required: false })
+  imageUrl?: string;
 }
 
 export const BlogSchema = SchemaFactory.createForClass(Blog);

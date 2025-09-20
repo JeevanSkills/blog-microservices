@@ -15,4 +15,15 @@ export class BlogsRepository extends AbstractRepository<Blog> {
   ) {
     super(blogModel, connection);
   }
+
+  async delete(filterQuery: any): Promise<Blog> {
+    const document = await this.model.findOneAndDelete(filterQuery, { lean: true });
+    
+    if (!document) {
+      this.logger.warn('Document not found with filterQuery:', filterQuery);
+      throw new Error('Document not found.');
+    }
+
+    return document as unknown as Blog;
+  }
 }
